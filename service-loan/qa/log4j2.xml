@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN">
+
+    <Properties>
+        <Property name="baseDir">/logs</Property> <!-- Match with mounted path in helm-values -->
+        <Property name="host">${env:HOSTNAME}</Property> <!-- Must be visible to the application runtime -->
+        <Property name="fileName">digicel.loanservice.out</Property>
+        <Property name="purgingAge">30d</Property> <!-- Amount of time before purge is initiated 10d - 10 days PT10M 10 - minutes -->
+        <Property name="logPattern">%d %5p %c{1}:%L - %m%n</Property> <!-- Standard logging pattern -->
+        <Property name="datePattern">MM-dd-yyyy</Property>
+        <Property name="timePattern">HH-mm</Property> <!-- Will not work with ':' -->
+        <Property name="sizeTrigger">5 MB</Property> <!-- Storage Account Read Size Limit -->
+        <Property name="timeTrigger">1440</Property> <!-- Based on time pattern, the amount of units passed before rollover -->
+        <Property name="archiveDir">/archive</Property>
+        <Property name="maxDepth">3</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout>
+                <Pattern>${host} ${logPattern}</Pattern>
+            </PatternLayout>
+        </Console>
+        <RollingFile name="SYSAppender" fileName="${baseDir}/${fileName}"
+                     filePattern="${baseDir}${archiveDir}/%d{${datePattern}}_%d{${timePattern}}_${fileName}">
+            <PatternLayout>
+                <Pattern>${host} ${logPattern}</Pattern>
+            </PatternLayout>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="${sizeTrigger}" />
+                <TimeBasedTriggeringPolicy interval="${timeTrigger}"/>
+            </Policies>
+            <DefaultRolloverStrategy>
+                <Delete basePath="${baseDir}${archiveDir}" maxDepth="${maxDepth}">
+                    <IfFileName glob="*${fileName}" />
+                    <IfLastModified age="${purgingAge}" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+
+        <RollingFile name="ACTAppender" fileName="${baseDir}/service-loan-act.system.txt"
+                     filePattern="${baseDir}${archiveDir}/%d{${datePattern}}_service-loan-act.system.txt">
+            <PatternLayout>
+                <Pattern>${host} ${logPattern}</Pattern>
+            </PatternLayout>
+            <SizeBasedTriggeringPolicy size="${sizeTrigger}" />
+        </RollingFile>
+        <RollingFile name="StatsAppender" fileName="${baseDir}/queueStatistics.csv"
+                     filePattern="${baseDir}${archiveDir}/%d{${datePattern}}_queueStatistics.csv">
+            <PatternLayout>
+                <Pattern>%m%n</Pattern>
+            </PatternLayout>
+            <TimeBasedTriggeringPolicy />
+        </RollingFile>
+        <RollingFile name="TRXAppender" fileName="${baseDir}/transactionStatistics.csv"
+                     filePattern="${baseDir}${archiveDir}/%d{${datePattern}}_transactionStatistics.csv">
+            <PatternLayout>
+                <Pattern>%m%n</Pattern>
+            </PatternLayout>
+            <TimeBasedTriggeringPolicy />
+        </RollingFile>
+    </Appenders>
+
+
+    <Loggers>
+        <Logger name="com.digicel" level="trace" additivity="false">
+            <appender-ref ref="SYSAppender" />
+            <appender-ref ref="Console" />
+        </Logger>
+        <Logger name="org.springframework" level="info" additivity="false">
+            <appender-ref ref="SYSAppender" />
+            <appender-ref ref="Console" />
+        </Logger>
+        <Logger name="Transactions" level="debug" additivity="true">
+            <appender-ref ref="TRXAppender" />
+        </Logger>
+        <Logger name="Statistics" level="debug" additivity="true">
+            <appender-ref ref="StatsAppender" />
+        </Logger>
+        <Root level="info">
+            <AppenderRef ref="SYSAppender" />
+            <AppenderRef ref="Console" />
+        </Root>
+    </Loggers>
+</Configuration>
